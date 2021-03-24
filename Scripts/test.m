@@ -14,7 +14,7 @@ tic
 initialise_df
 
 %% Input parameters
-params_filepath = './PEM_workshop_Input_files/Schottky.csv';     % Filepath to the parameters file
+params_filepath = './Input_files/Schottky.csv';     % Filepath to the parameters file
 output_filename = 'schottky';                                    % Filename for output file
 
 tdwell = 1e-8; % TDWELL - the relaxation time after jumping
@@ -24,93 +24,87 @@ stabilise = 0; % STABILISE - Determines whether the time step is increased such 
 % device is at steady-state at the end of the solution
 accelerate = 0; % ACCELERATE - Accelerate the ions to be at the same mobility as the
 % electrons (for easy access to steady state solutions)
-Vjump = 0; % VJUMP - the voltage to be jumped to
+Vjump = 0.5; % VJUMP - the voltage to be jumped to
 Vstep = 0.5; % Vstep - the step voltage add each time
 % Vinitial = Vjump+Vstep; % Vinitial - the start voltage of the loop;
-Vmax = 1; % Vmax - the max Vstep voltage applied
+Vmax = 0.5; % Vmax - the max Vstep voltage applied
 n = 1; 
-m = 1;
-%% In a single loop, Load in parameters
+% m = 1;
 
+%% Load in parameters
 par = pc(params_filepath);
 
 %% Obtain equilibrium solution
-sol_eq = equilibrate(par, 1);
-sol_relax(n) = sol_eq.el;
+sol_eq = equilibrate(par);
 
-while(n<=Vmax/Vstep)
-  n=n+1;
-  Vjump=Vjump+Vstep;
-  sol_relax(n) = jumptoV(sol_relax(n-1), Vjump, tdwell, mobseti, Int, stabilise, accelerate);
-  
+%% Call function to obtain equilibrium and perform voltage step 500mV for 1e-8s (The large voltage step)
+sol_relax = jumptoV(sol_eq.el, Vjump, tdwell, mobseti, Int, stabilise, accelerate);
+t = sol_relax.t;
+[J, j, xmesh] = dfana.calcJ(sol_relax);
+ppos = getpointpos(sol_relax.x(end), xmesh);
+figure(n+100) % keep the current density diagram of the first voltage step
+plot(t, J.n(:, ppos),t, J.p(:, ppos),t, J.a(:, ppos),t, J.c(:, ppos), t, J.disp(:,ppos), t, J.tot(:, ppos));
+legend('Jn', 'Jp', 'Ja', 'Jc', 'Jdisp', 'Jtotal')
+xlabel('time [s]');
+ylabel('J [A cm^{-2}]');
+set(legend,'FontSize',16);
+set(legend,'EdgeColor',[1 1 1]);
 
+%% Call function to get the energy diagram
+dfplot.ELx(sol_eq.el,sol_eq.el.t(end));
+hold on;
+dfplot.ELx(sol_relax,sol_relax.t(end));
+hold off;
 
-end
+% deltaQ = cumtrapz(t, J.tot(:, ppos));
 
-while(m<n)
-  m=m+1;
-  t = sol_relax(m).t;
-  [J, j, xmesh] = dfana.calcJ(sol_relax(m));
-  ppos = getpointpos(sol_relax(m).x(end), xmesh);
-  deltaQ = cumtrapz(t, J.tot(:, ppos));
-  figure(m+100)
-  plot(t, J.n(:, ppos),t, J.p(:, ppos),t, J.a(:, ppos),t, J.c(:, ppos), t, J.disp(:,ppos), t, J.tot(:, ppos));
-  legend('Jn', 'Jp', 'Ja', 'Jc', 'Jdisp', 'Jtotal')
-  xlabel('time [s]');
-  ylabel('J [A cm^{-2}]');
-  set(legend,'FontSize',16);
-  set(legend,'EdgeColor',[1 1 1]);
-  
-  dfplot.ELx(sol_eq.el,sol_eq.el.t(end));
-  hold on;
-  dfplot.ELx(sol_relax(m),sol_relax(m).t(end));
-  hold off;
-
-end
+%% Plot the current density diagram, the energy diagram after voltage step
 
 
 
-
-
-% %% Load in parameters
+% %% In a single loop, Load in parameters
+% 
 % par = pc(params_filepath);
 % 
 % %% Obtain equilibrium solution
 % sol_eq = equilibrate(par, 1);
+% sol_relax(n) = sol_eq.el;
 % 
-% %% Call function to obtain equilibrium and perform voltage step 500mV for 1e-8s
-% sol_relax = jumptoV(sol_eq.el, Vjump, tdwell, mobseti, Int, stabilise, accelerate);
-% t = sol_relax(n).t;
-% [J, j, xmesh] = dfana.calcJ(sol_relax(n));
-% ppos = getpointpos(sol_relax(n).x(end), xmesh);
-% deltaQ = cumtrapz(t, J.tot(:, ppos));
-% 
-% %% Plot the current density diagram, the energy diagram after voltage step
-% 
-% while(n<=(Vmax-Vinitial)/Vstep+1)
+% while(n<=Vmax/Vstep)
 %   n=n+1;
 %   Vjump=Vjump+Vstep;
 %   sol_relax(n) = jumptoV(sol_relax(n-1), Vjump, tdwell, mobseti, Int, stabilise, accelerate);
-%   t = sol_relax(n).t;
-%   [J, j, xmesh] = dfana.calcJ(sol_relax(n));
-%   ppos = getpointpos(sol_relax(n).x(end), xmesh);
+%   
+% 
+% 
+% end
+% 
+% while(m<n)
+%   m=m+1;
+%   t = sol_relax(m).t;
+%   [J, j, xmesh] = dfana.calcJ(sol_relax(m));
+%   ppos = getpointpos(sol_relax(m).x(end), xmesh);
 %   deltaQ = cumtrapz(t, J.tot(:, ppos));
-%   figure(n+100)
+%   figure(m+100)
 %   plot(t, J.n(:, ppos),t, J.p(:, ppos),t, J.a(:, ppos),t, J.c(:, ppos), t, J.disp(:,ppos), t, J.tot(:, ppos));
 %   legend('Jn', 'Jp', 'Ja', 'Jc', 'Jdisp', 'Jtotal')
 %   xlabel('time [s]');
 %   ylabel('J [A cm^{-2}]');
 %   set(legend,'FontSize',16);
 %   set(legend,'EdgeColor',[1 1 1]);
-% 
 %   
-%   
-% %   dfplot.ELx(sol_eq.el,sol_eq.el.t(end));
-% %   hold on;
-% %   dfplot.ELx(sol_relax(n),sol_relax(n).t(end));
-% %   hold off;
+%   dfplot.ELx(sol_eq.el,sol_eq.el.t(end));
+%   hold on;
+%   dfplot.ELx(sol_relax(m),sol_relax(m).t(end));
+%   hold off;
 % 
 % end
+
+
+
+
+
+
 
 
 

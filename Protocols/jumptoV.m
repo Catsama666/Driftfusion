@@ -32,7 +32,10 @@ disp('Starting jump to V')
 par = sol_ini.par;
 
 %% Set up sweep
-tjump = 1e-6;
+% tjump = 1e-11;
+tjump = 1e-6; % the origin value
+par.tmax = tjump; % define integration time for the sweep to the voltage at the step value
+
 par.tmesh_type = 1;
 par.t0 = 0;
 par.V_fun_type = 'sweep';
