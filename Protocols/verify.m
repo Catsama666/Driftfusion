@@ -1,4 +1,4 @@
-function equilbrium = verify(sol_matrix, t_array, time_fraction)
+function equilbrium = verify(sol_in, time_fraction)
 %
 % Inputs:
 %   SOL_MATRIX - a solution matrix, not the full struct, as contained in
@@ -27,20 +27,28 @@ if time_fraction >= 1 || time_fraction < 0 || ~isnumeric(time_fraction)
     return
 end
 
-% name of the variables
-names = ["potential", "electrons", "holes", "cations", "anions"];
-% which values have to be considered in a linear or in a log10 scale
-
-
+t = sol_in.t;
+[J, j, xmesh] = dfana.calcJ(sol_in);
 % no need to calculate end_time for each of the 4 solutions: if they
 % break they break at the same time
 % using t(end) could get a time out of the solution when the computation broke before reaching the final time
-end_time = t_array(length(sol_matrix(:, 1, 1)));
-[~, time_index] = min(abs(t_array - time_fraction * end_time)); % get time mesh index at a specified percentage of maximum time reached
+end_time = t(length(sol_in(:, 1, 1)));
+ppos = getpointpos(sol_in.x(end), xmesh);
+figure(n+100) % keep the current density diagram of the first voltage step
+plot(t, J.n(:, ppos),t, J.p(:, ppos),t, J.a(:, ppos),t, J.c(:, ppos), t, J.disp(:,ppos), t, J.tot(:, ppos));
+legend('Jn', 'Jp', 'Ja', 'Jc', 'Jdisp', 'Jtotal')
+xlabel('time [s]');
+ylabel('J [A cm^{-2}]');
+set(legend,'FontSize',16);
+set(legend,'EdgeColor',[1 1 1]);
 
 
-    profile_at_time = sol_matrix(time_index, :, 1); % take profile of values at a certain time of evolution
-    profile_end = sol_matrix(end, :, 1); % take profile of values at the end of time
+% Return only the second output value of min, which is time_index
+[~, time_index] = min(abs(t - time_fraction * end_time)); % get time mesh index at a specified percentage of maximum time reached
+
+
+    profile_at_time = J.total(time_index, :, 1); % take profile of values at a certain time of evolution
+    profile_end = J.total(end, :, 1); % take profile of values at the end of time
 
 
     difference = sum(abs(profile_end - profile_at_time)); % sum up all the differences between the profiles
@@ -48,19 +56,17 @@ end_time = t_array(length(sol_matrix(:, 1, 1)));
     threshold = 1e-5 * sum(abs(profile_end - mean(profile_end))); % sum up absolute values, ignore constant bias
     stable = difference <= threshold;
 
-    if stable
-        %display(['variable ', num2str(i), ' stabilisation verified']);        
+    if stable       
     else
         warning('Driftfusion:verifyJ',...
-            'Comparing final solutions at %s s and %s s showed that the %s distribution did not reach stability. Consider trying with a greater tmax.',...
-            num2str(t_array(time_index)), num2str(t_array(end)), names(1));
+            'The final solutions did not reach stability. Consider trying with a greater tmax.');
     end
     % true just if all the variables are stabilized
     equilbrium = equilbrium && stable;
 end
 
 if equilbrium
-    disp("Equilbrium reached");
+    disp("Equilbrium verified");
 end
 
 %------------- END OF CODE --------------
